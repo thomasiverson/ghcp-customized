@@ -178,12 +178,12 @@
  *         description: User or product not found in wishlist
  */
 
-import { Router, Request, Response } from 'express';
+import express from 'express';
 import { User } from '../models/user';
 import { users as seedUsers } from '../seedData';
 import { products } from '../seedData';
 
-const router = Router();
+const router = express.Router();
 
 let users: User[] = [...seedUsers];
 
@@ -199,158 +199,159 @@ const isValidPassword = (password: string): boolean => {
 };
 
 // POST /api/users - Register new user
-router.post('/', (req: Request, res: Response) => {
+router.post('/', (req, res) => {
     const { email, name, password } = req.body;
 
     // Validate required fields
     if (!email || !name || !password) {
-        return res.status(400).json({ error: 'Email, name, and password are required' });
+        res.status(400).json({ error: 'Email, name, and password are required' });
+    } else if (!isValidEmail(email)) {
+        // Validate email format
+        res.status(400).json({ error: 'Invalid email format' });
+    } else if (!isValidPassword(password)) {
+        // Validate password requirements
+        res.status(400).json({ error: 'Password must be at least 8 characters' });
+    } else {
+        // Check for duplicate email
+        const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+        if (existingUser) {
+            res.status(400).json({ error: 'Email already exists' });
+        } else {
+            // Create new user
+            const newUser: User = {
+                userId: Math.max(0, ...users.map(u => u.userId)) + 1,
+                email,
+                name,
+                isAdmin: email.endsWith('@github.com'), // Admin if GitHub email
+                createdAt: new Date(),
+                wishlistProductIds: []
+            };
+
+            users.push(newUser);
+            res.status(201).json(newUser);
+        }
     }
-
-    // Validate email format
-    if (!isValidEmail(email)) {
-        return res.status(400).json({ error: 'Invalid email format' });
-    }
-
-    // Validate password requirements
-    if (!isValidPassword(password)) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
-
-    // Check for duplicate email
-    const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-    if (existingUser) {
-        return res.status(400).json({ error: 'Email already exists' });
-    }
-
-    // Create new user
-    const newUser: User = {
-        userId: Math.max(0, ...users.map(u => u.userId)) + 1,
-        email,
-        name,
-        isAdmin: email.endsWith('@github.com'), // Admin if GitHub email
-        createdAt: new Date(),
-        wishlistProductIds: []
-    };
-
-    users.push(newUser);
-    res.status(201).json(newUser);
 });
 
 // GET /api/users/:email - Get user by email (for login)
-router.get('/:email', (req: Request, res: Response) => {
+router.get('/:email', (req, res) => {
     const { email } = req.params;
     const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
     
-    if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+    if (user) {
+        res.json(user);
+    } else {
+        res.status(404).json({ error: 'User not found' });
     }
-    
-    res.json(user);
 });
 
 // PUT /api/users/id/:userId - Update user details
-router.put('/id/:userId', (req: Request, res: Response) => {
+router.put('/id/:userId', (req, res) => {
     const userId = parseInt(req.params.userId);
     const { name, email } = req.body;
     
     const userIndex = users.findIndex(u => u.userId === userId);
     
     if (userIndex === -1) {
-        return res.status(404).json({ error: 'User not found' });
-    }
-
-    // If email is being updated, check for duplicates
-    if (email && email !== users[userIndex].email) {
-        if (!isValidEmail(email)) {
-            return res.status(400).json({ error: 'Invalid email format' });
+        res.status(404).json({ error: 'User not found' });
+    } else {
+        // If email is being updated, check for duplicates
+        if (email && email !== users[userIndex].email) {
+            if (!isValidEmail(email)) {
+                res.status(400).json({ error: 'Invalid email format' });
+                return;
+            }
+            const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+            if (existingUser) {
+                res.status(400).json({ error: 'Email already exists' });
+                return;
+            }
         }
-        const existingUser = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-        if (existingUser) {
-            return res.status(400).json({ error: 'Email already exists' });
-        }
-    }
 
-    // Update user
-    if (name) users[userIndex].name = name;
-    if (email) {
-        users[userIndex].email = email;
-        users[userIndex].isAdmin = email.endsWith('@github.com');
+        // Update user
+        if (name) users[userIndex].name = name;
+        if (email) {
+            users[userIndex].email = email;
+            users[userIndex].isAdmin = email.endsWith('@github.com');
+        }
+        
+        res.json(users[userIndex]);
     }
-    
-    res.json(users[userIndex]);
 });
 
 // GET /api/users/:userId/wishlist - Get user's wishlist with full product details
-router.get('/:userId/wishlist', (req: Request, res: Response) => {
+router.get('/:userId/wishlist', (req, res) => {
     const userId = parseInt(req.params.userId);
     const user = users.find(u => u.userId === userId);
     
-    if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+    if (user) {
+        // Get full product details for each product in wishlist
+        const wishlistProducts = products.filter(p => 
+            user.wishlistProductIds.includes(p.productId)
+        );
+        
+        res.json(wishlistProducts);
+    } else {
+        res.status(404).json({ error: 'User not found' });
     }
-    
-    // Get full product details for each product in wishlist
-    const wishlistProducts = products.filter(p => 
-        user.wishlistProductIds.includes(p.productId)
-    );
-    
-    res.json(wishlistProducts);
 });
 
 // POST /api/users/:userId/wishlist - Add product to wishlist
-router.post('/:userId/wishlist', (req: Request, res: Response) => {
+router.post('/:userId/wishlist', (req, res) => {
     const userId = parseInt(req.params.userId);
     const { productId } = req.body;
     
     if (!productId) {
-        return res.status(400).json({ error: 'Product ID is required' });
+        res.status(400).json({ error: 'Product ID is required' });
+        return;
     }
     
     const userIndex = users.findIndex(u => u.userId === userId);
     
     if (userIndex === -1) {
-        return res.status(404).json({ error: 'User not found' });
+        res.status(404).json({ error: 'User not found' });
+    } else {
+        // Verify product exists
+        const product = products.find(p => p.productId === productId);
+        if (!product) {
+            res.status(400).json({ error: 'Invalid product ID' });
+            return;
+        }
+        
+        // Check if product is already in wishlist
+        if (users[userIndex].wishlistProductIds.includes(productId)) {
+            res.status(400).json({ error: 'Product already in wishlist' });
+            return;
+        }
+        
+        // Add to wishlist
+        users[userIndex].wishlistProductIds.push(productId);
+        
+        res.json(users[userIndex]);
     }
-    
-    // Verify product exists
-    const product = products.find(p => p.productId === productId);
-    if (!product) {
-        return res.status(400).json({ error: 'Invalid product ID' });
-    }
-    
-    // Check if product is already in wishlist
-    if (users[userIndex].wishlistProductIds.includes(productId)) {
-        return res.status(400).json({ error: 'Product already in wishlist' });
-    }
-    
-    // Add to wishlist
-    users[userIndex].wishlistProductIds.push(productId);
-    
-    res.json(users[userIndex]);
 });
 
 // DELETE /api/users/:userId/wishlist/:productId - Remove from wishlist
-router.delete('/:userId/wishlist/:productId', (req: Request, res: Response) => {
+router.delete('/:userId/wishlist/:productId', (req, res) => {
     const userId = parseInt(req.params.userId);
     const productId = parseInt(req.params.productId);
     
     const userIndex = users.findIndex(u => u.userId === userId);
     
     if (userIndex === -1) {
-        return res.status(404).json({ error: 'User not found' });
+        res.status(404).json({ error: 'User not found' });
+    } else {
+        const productIndex = users[userIndex].wishlistProductIds.indexOf(productId);
+        
+        if (productIndex === -1) {
+            res.status(404).json({ error: 'Product not found in wishlist' });
+        } else {
+            // Remove from wishlist
+            users[userIndex].wishlistProductIds.splice(productIndex, 1);
+            
+            res.json(users[userIndex]);
+        }
     }
-    
-    const productIndex = users[userIndex].wishlistProductIds.indexOf(productId);
-    
-    if (productIndex === -1) {
-        return res.status(404).json({ error: 'Product not found in wishlist' });
-    }
-    
-    // Remove from wishlist
-    users[userIndex].wishlistProductIds.splice(productIndex, 1);
-    
-    res.json(users[userIndex]);
 });
 
 // Helper function to reset users for testing
