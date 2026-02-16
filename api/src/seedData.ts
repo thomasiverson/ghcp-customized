@@ -6,6 +6,7 @@ import { Order } from './models/order';
 import { OrderDetail } from './models/orderDetail';
 import { Delivery } from './models/delivery';
 import { OrderDetailDelivery } from './models/orderDetailDelivery';
+import { WishlistItem } from './models/wishlist';
 
 // Suppliers
 export const suppliers: Supplier[] = [
@@ -290,5 +291,39 @@ export const orderDetailDeliveries: OrderDetailDelivery[] = [
         deliveryId: 2,
         quantity: 20,
         notes: "Delivery"
+    }
+];
+
+// Wishlist Items
+export const wishlistItems: WishlistItem[] = [
+    {
+        wishlistItemId: 1,
+        email: "user@example.com",
+        productId: 1,
+        addedAt: new Date("2024-01-15T10:30:00Z")
+    },
+    {
+        wishlistItemId: 2,
+        email: "user@example.com",
+        productId: 3,
+        addedAt: new Date("2024-01-16T14:20:00Z")
+    },
+    {
+        wishlistItemId: 3,
+        email: "user@example.com",
+        productId: 7,
+        addedAt: new Date("2024-01-20T09:15:00Z")
+    },
+    {
+        wishlistItemId: 4,
+        email: "admin@github.com",
+        productId: 2,
+        addedAt: new Date("2024-01-18T11:45:00Z")
+    },
+    {
+        wishlistItemId: 5,
+        email: "admin@github.com",
+        productId: 5,
+        addedAt: new Date("2024-01-19T16:30:00Z")
     }
 ];
