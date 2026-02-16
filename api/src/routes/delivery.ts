@@ -108,6 +108,11 @@ const router = express.Router();
 
 let deliveries: Delivery[] = [...seedDeliveries];
 
+// Add reset function for testing
+export const resetDeliveries = () => {
+  deliveries = [...seedDeliveries];
+};
+
 // Create a new delivery
 router.post('/', (req, res) => {
   const newDelivery: Delivery = req.body;
