@@ -138,7 +138,7 @@ export default function Products() {
                   )}
                   <button
                     onClick={(e) => handleWishlistToggle(product.productId, e)}
-                    className="absolute top-2 right-2 p-2 rounded-full bg-white/90 hover:bg-white transition-all duration-300 transform hover:scale-110"
+                    className="absolute top-2 right-2 p-2 rounded-full bg-white/90 hover:bg-white transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                     aria-label={isInWishlist(product.productId) ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
                   >
                     <svg 
