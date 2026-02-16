@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -21,11 +21,16 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     try {
       await login(email, password);
       navigate('/');
-    } catch {
-      setError('Login failed. Please try again.');
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('Login failed. Please try again.');
+      }
     }
   };
 
@@ -35,10 +40,9 @@ export default function Login() {
         <h2 className={`text-3xl font-bold ${darkMode ? 'text-light' : 'text-gray-800'} mb-6 transition-colors duration-300`}>Login</h2>
         
         {error && (
-          <div 
-            className="bg-red-500/10 border border-red-500 text-red-500 rounded-md p-3 mb-4"
-            dangerouslySetInnerHTML={{ __html: error }}
-          />
+          <div className="bg-red-500/10 border border-red-500 text-red-500 rounded-md p-3 mb-4">
+            {error}
+          </div>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -74,6 +78,13 @@ export default function Login() {
             Login
           </button>
         </form>
+
+        <div className={`mt-4 text-center ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
+          Don't have an account?{' '}
+          <Link to="/register" className="text-primary hover:text-accent transition-colors">
+            Register here
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useQuery } from 'react-query';
 import { api } from '../../../api/config';
 import { useTheme } from '../../../context/ThemeContext';
+import { useAuth } from '../../../context/AuthContext';
+import { useWishlist } from '../../../context/WishlistContext';
 
 interface Product {
   productId: number;
@@ -26,8 +28,11 @@ export default function Products() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showModal, setShowModal] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState<Record<number, boolean>>({});
   const { data: products, isLoading, error } = useQuery('products', fetchProducts);
   const { darkMode } = useTheme();
+  const { isLoggedIn } = useAuth();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const filteredProducts = products?.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -50,6 +55,27 @@ export default function Products() {
         ...prev,
         [productId]: 0
       }));
+    }
+  };
+
+  const handleWishlistToggle = async (productId: number) => {
+    if (!isLoggedIn) {
+      alert('Please log in to add items to your wishlist');
+      return;
+    }
+
+    setWishlistLoading(prev => ({ ...prev, [productId]: true }));
+    try {
+      if (isInWishlist(productId)) {
+        await removeFromWishlist(productId);
+      } else {
+        await addToWishlist(productId);
+      }
+    } catch (error) {
+      console.error('Failed to update wishlist:', error);
+      alert('Failed to update wishlist. Please try again.');
+    } finally {
+      setWishlistLoading(prev => ({ ...prev, [productId]: false }));
     }
   };
 
@@ -124,6 +150,37 @@ export default function Products() {
                     <div className="absolute top-8 left-0 bg-primary text-white px-3 py-1 -rotate-90 transform -translate-x-5 shadow-md">
                       {Math.round(product.discount * 100)}% OFF
                     </div>
+                  )}
+                  {isLoggedIn && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleWishlistToggle(product.productId);
+                      }}
+                      className={`absolute top-2 right-2 p-2 rounded-full transition-all ${
+                        wishlistLoading[product.productId]
+                          ? 'opacity-50 cursor-wait'
+                          : isInWishlist(product.productId)
+                          ? 'bg-red-500 text-white hover:bg-red-600'
+                          : `${darkMode ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-white text-gray-600 hover:bg-gray-100'}`
+                      }`}
+                      disabled={wishlistLoading[product.productId]}
+                      aria-label={isInWishlist(product.productId) ? 'Remove from wishlist' : 'Add to wishlist'}
+                    >
+                      <svg
+                        className="w-6 h-6"
+                        fill={isInWishlist(product.productId) ? 'currentColor' : 'none'}
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                        />
+                      </svg>
+                    </button>
                   )}
                 </div>
                 

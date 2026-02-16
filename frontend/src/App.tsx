@@ -5,10 +5,17 @@ import About from './components/About';
 import Footer from './components/Footer';
 import Products from './components/entity/product/Products';
 import Login from './components/Login';
+import Register from './components/Register';
+import Wishlist from './components/Wishlist';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { WishlistProvider } from './context/WishlistContext';
 import AdminProducts from './components/admin/AdminProducts';
 import { useTheme } from './context/ThemeContext';
+import { QueryClient, QueryClientProvider } from 'react-query';
+
+// Create a client
+const queryClient = new QueryClient();
 
 // Wrapper component to apply theme classes
 function ThemedApp() {
@@ -24,6 +31,8 @@ function ThemedApp() {
             <Route path="/about" element={<About />} />
             <Route path="/products" element={<Products />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/wishlist" element={<Wishlist />} />
             <Route path="/admin/products" element={<AdminProducts />} />
           </Routes>
         </main>
@@ -35,11 +44,15 @@ function ThemedApp() {
 
 function App() {
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <ThemedApp />
-      </ThemeProvider>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ThemeProvider>
+          <WishlistProvider>
+            <ThemedApp />
+          </WishlistProvider>
+        </ThemeProvider>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }
 
