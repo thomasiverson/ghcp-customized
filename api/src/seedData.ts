@@ -6,6 +6,7 @@ import { Order } from './models/order';
 import { OrderDetail } from './models/orderDetail';
 import { Delivery } from './models/delivery';
 import { OrderDetailDelivery } from './models/orderDetailDelivery';
+import { User } from './models/user';
 
 // Suppliers
 export const suppliers: Supplier[] = [
@@ -290,5 +291,33 @@ export const orderDetailDeliveries: OrderDetailDelivery[] = [
         deliveryId: 2,
         quantity: 20,
         notes: "Delivery"
+    }
+];
+
+// Users
+export const users: User[] = [
+    {
+        userId: 1,
+        email: "alice@example.com",
+        name: "Alice Johnson",
+        isAdmin: false,
+        createdAt: new Date("2024-01-15T10:00:00Z"),
+        wishlistProductIds: []
+    },
+    {
+        userId: 2,
+        email: "bob@github.com",
+        name: "Bob Smith",
+        isAdmin: true,
+        createdAt: new Date("2024-02-01T14:30:00Z"),
+        wishlistProductIds: [1, 3, 5]
+    },
+    {
+        userId: 3,
+        email: "charlie@example.com",
+        name: "Charlie Brown",
+        isAdmin: false,
+        createdAt: new Date("2024-03-10T09:15:00Z"),
+        wishlistProductIds: [2, 4, 7, 10]
     }
 ];
