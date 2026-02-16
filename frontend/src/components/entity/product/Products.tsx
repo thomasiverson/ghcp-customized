@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useQuery } from 'react-query';
 import { api } from '../../../api/config';
 import { useTheme } from '../../../context/ThemeContext';
+import { useWishlist } from '../../../context/WishlistContext';
 
 interface Product {
   productId: number;
@@ -28,6 +29,7 @@ export default function Products() {
   const [showModal, setShowModal] = useState(false);
   const { data: products, isLoading, error } = useQuery('products', fetchProducts);
   const { darkMode } = useTheme();
+  const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
   const filteredProducts = products?.filter(product => 
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -50,6 +52,15 @@ export default function Products() {
         ...prev,
         [productId]: 0
       }));
+    }
+  };
+
+  const handleWishlistToggle = (productId: number, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (isInWishlist(productId)) {
+      removeFromWishlist(productId);
+    } else {
+      addToWishlist(productId);
     }
   };
 
@@ -125,6 +136,24 @@ export default function Products() {
                       {Math.round(product.discount * 100)}% OFF
                     </div>
                   )}
+                  <button
+                    onClick={(e) => handleWishlistToggle(product.productId, e)}
+                    className="absolute top-2 right-2 p-2 rounded-full bg-white/90 hover:bg-white transition-all duration-300 transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                    aria-label={isInWishlist(product.productId) ? `Remove ${product.name} from wishlist` : `Add ${product.name} to wishlist`}
+                  >
+                    <svg 
+                      className={`w-6 h-6 transition-colors duration-300 ${isInWishlist(product.productId) ? 'text-primary fill-current' : 'text-gray-400'}`}
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    >
+                      <path 
+                        strokeLinecap="round" 
+                        strokeLinejoin="round" 
+                        d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                      />
+                    </svg>
+                  </button>
                 </div>
                 
                 <div className="p-4 flex flex-col flex-grow">
