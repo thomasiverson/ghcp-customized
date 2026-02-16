@@ -86,7 +86,7 @@ interface FormState {
 
 ## Data Fetching with React Query
 
-Use React Query (v3) for all data fetching:
+Use React Query (v3.39.3) for all data fetching. Note: This project uses React Query v3 for demonstration purposes. For new projects, consider using TanStack Query v5+ which offers improved features and TypeScript support.
 
 ```typescript
 import { useQuery, useMutation } from 'react-query';
