@@ -86,9 +86,19 @@ describe('Wishlist API', () => {
         expect(user2Response.body.every((item: any) => item.email === 'admin@github.com')).toBe(true);
     });
 
-    it('should reset wishlist to seed data', () => {
+    it('should reset wishlist to seed data', async () => {
+        // Add a new item
+        await request(app).post('/wishlist').send({
+            email: 'test@example.com',
+            productId: 5
+        });
+        
+        // Reset the wishlist
         resetWishlist();
-        // This is implicitly tested by the beforeEach, but we can verify manually
-        expect(true).toBe(true);
+        
+        // Verify it was reset to seed data
+        const response = await request(app).get('/wishlist/user@example.com');
+        expect(response.status).toBe(200);
+        expect(response.body.length).toBe(seedWishlistItems.filter(item => item.email === 'user@example.com').length);
     });
 });
