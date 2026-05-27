@@ -7,6 +7,7 @@ import Products from './components/entity/product/Products';
 import Login from './components/Login';
 import { AuthProvider } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { WishlistProvider } from './context/WishlistContext';
 import AdminProducts from './components/admin/AdminProducts';
 import { useTheme } from './context/ThemeContext';
 
@@ -37,7 +38,9 @@ function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <ThemedApp />
+        <WishlistProvider>
+          <ThemedApp />
+        </WishlistProvider>
       </ThemeProvider>
     </AuthProvider>
   );
