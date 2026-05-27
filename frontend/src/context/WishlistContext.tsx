@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   PurchasedWishlistItem,
   WishlistItem,
@@ -27,7 +27,7 @@ interface WishlistContextType {
   purchasedItems: PurchasedWishlistItem[];
   isSaving: boolean;
   updateError: string | null;
-  addToWishlist: (productId: number, metadata?: Partial<WishlistItem>) => void;
+  addToWishlist: (productId: number, options?: Partial<WishlistItem>) => void;
   removeFromWishlist: (productId: number) => void;
   updateItemNotes: (productId: number, notes: string) => void;
   updateItemPriority: (productId: number, priority?: WishlistPriority) => void;
@@ -94,6 +94,7 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   const [purchasedItems, setPurchasedItems] = useState<PurchasedWishlistItem[]>(loadPurchasedItems);
   const [isSaving, setIsSaving] = useState(false);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const pendingSavesRef = useRef(0);
 
   useEffect(() => {
     try {
@@ -114,42 +115,38 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
   }, [purchasedItems]);
 
   const withSaving = (updater: () => void) => {
+    pendingSavesRef.current += 1;
     setIsSaving(true);
     try {
       updater();
       setUpdateError(null);
     } catch {
-      setUpdateError('Something went wrong while updating your wishlist');
+      setUpdateError('Failed to update wishlist. Please try again or check your browser storage settings.');
     } finally {
-      setTimeout(() => setIsSaving(false), 200);
+      pendingSavesRef.current = Math.max(0, pendingSavesRef.current - 1);
+      setIsSaving(pendingSavesRef.current > 0);
     }
   };
 
-  const getNextWishlistItemId = useCallback(() => {
-    if (!wishlistItems.length) {
-      return 1;
-    }
-    return Math.max(...wishlistItems.map(item => item.wishlistItemId)) + 1;
-  }, [wishlistItems]);
-
-  const addToWishlist = useCallback((productId: number, metadata: Partial<WishlistItem> = {}) => {
+  const addToWishlist = useCallback((productId: number, options: Partial<WishlistItem> = {}) => {
     if (!Number.isFinite(productId) || productId <= 0) {
       return;
     }
 
     withSaving(() => {
       setWishlistItems(prevItems => {
+        const nextWishlistItemId = prevItems.length ? Math.max(...prevItems.map(item => item.wishlistItemId)) + 1 : 1;
         const existingItem = prevItems.find(item => item.productId === productId);
         if (existingItem) {
           return prevItems.map(item =>
             item.productId === productId
               ? {
                   ...item,
-                  notes: metadata.notes ?? item.notes,
-                  priority: metadata.priority ?? item.priority,
-                  category: metadata.category ?? item.category,
-                  targetPrice: metadata.targetPrice ?? item.targetPrice,
-                  quantity: metadata.quantity && metadata.quantity > 0 ? metadata.quantity : item.quantity,
+                  notes: options.notes ?? item.notes,
+                  priority: options.priority ?? item.priority,
+                  category: options.category ?? item.category,
+                  targetPrice: options.targetPrice ?? item.targetPrice,
+                  quantity: options.quantity && options.quantity > 0 ? options.quantity : item.quantity,
                 }
               : item,
           );
@@ -159,17 +156,17 @@ export function WishlistProvider({ children }: { children: ReactNode }) {
           ...prevItems,
           normalizeWishlistItem(
             {
-              ...metadata,
+              ...options,
               productId,
-              wishlistItemId: getNextWishlistItemId(),
+              wishlistItemId: nextWishlistItemId,
               addedAt: new Date().toISOString(),
             },
-            getNextWishlistItemId(),
+            nextWishlistItemId,
           ),
         ];
       });
     });
-  }, [getNextWishlistItemId]);
+  }, []);
 
   const removeFromWishlist = useCallback((productId: number) => {
     withSaving(() => {

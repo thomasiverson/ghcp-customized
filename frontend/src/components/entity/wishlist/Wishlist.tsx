@@ -64,6 +64,7 @@ export default function Wishlist() {
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [sortType, setSortType] = useState<SortType>('date');
   const [bulkCategory, setBulkCategory] = useState('');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
 
   const productMap = useMemo(() => {
     const map: Record<number, Product> = {};
@@ -117,6 +118,16 @@ export default function Wishlist() {
 
   useEffect(() => {
     const handleKeyboardShortcuts = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+
       if (!selectedIds.length) {
         return;
       }
@@ -157,12 +168,12 @@ export default function Wishlist() {
     if (!Number.isFinite(quantity) || quantity < 1) {
       return;
     }
-    alert(`Added ${quantity} item(s) for product #${productId} to cart`);
+    setFeedbackMessage(`Cart integration pending: would add ${quantity} item(s) for product #${productId}.`);
   };
 
   const handleBuyNow = (productId: number) => {
     markItemPurchased(productId);
-    alert(`Checkout started for product #${productId}`);
+    setFeedbackMessage(`Checkout started for product #${productId}`);
   };
 
   const categoryEntries = Object.entries(groupedItems);
@@ -184,6 +195,7 @@ export default function Wishlist() {
             <p className={`${darkMode ? 'text-gray-400' : 'text-gray-600'} mt-1`}>Power tools for managing favorite products.</p>
             {isSaving && <p className="text-sm text-primary mt-2">Saving changes...</p>}
             {updateError && <p className="text-sm text-red-500 mt-2">{updateError}</p>}
+            {feedbackMessage && <p className="text-sm text-primary mt-2">{feedbackMessage}</p>}
           </div>
           <div className="flex flex-wrap gap-2 text-xs">
             {analytics.mostUsedCategories.slice(0, 3).map((entry, index) => (

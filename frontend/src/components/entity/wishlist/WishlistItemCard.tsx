@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { WishlistItem, WishlistPriority } from '../../../context/WishlistContext';
 import { useTheme } from '../../../context/ThemeContext';
 
@@ -60,6 +60,11 @@ export default function WishlistItemCard({
   const { darkMode } = useTheme();
   const [expanded, setExpanded] = useState(false);
   const [noteDraft, setNoteDraft] = useState(item.notes || '');
+  const notesChangeRef = useRef(onNotesChange);
+
+  useEffect(() => {
+    notesChangeRef.current = onNotesChange;
+  }, [onNotesChange]);
 
   useEffect(() => {
     setNoteDraft(item.notes || '');
@@ -68,14 +73,14 @@ export default function WishlistItemCard({
   useEffect(() => {
     const timer = window.setTimeout(() => {
       if (noteDraft !== (item.notes || '')) {
-        onNotesChange(item.productId, noteDraft);
+        notesChangeRef.current(item.productId, noteDraft);
       }
     }, 400);
 
     return () => {
       window.clearTimeout(timer);
     };
-  }, [item.notes, item.productId, noteDraft, onNotesChange]);
+  }, [item.notes, item.productId, noteDraft]);
 
   const effectivePrice = product.discount ? product.price * (1 - product.discount) : product.price;
 
@@ -158,13 +163,13 @@ export default function WishlistItemCard({
                 <span className={`${darkMode ? 'text-gray-300' : 'text-gray-700'} block mb-1`}>Move to category</span>
                 <input
                   id={`wishlist-category-${item.productId}`}
-                  list="wishlist-categories"
+                  list={`wishlist-categories-${item.productId}`}
                   value={item.category || ''}
                   onChange={(event) => onCategoryChange(item.productId, event.target.value)}
                   placeholder="Seasonal, Essentials..."
                   className={`w-full px-3 py-2 rounded-lg border ${darkMode ? 'bg-gray-700 text-light border-gray-600' : 'bg-white text-gray-800 border-gray-300'}`}
                 />
-                <datalist id="wishlist-categories">
+                <datalist id={`wishlist-categories-${item.productId}`}>
                   {categories.map(category => (
                     <option key={category} value={category} />
                   ))}
@@ -202,7 +207,7 @@ export default function WishlistItemCard({
               </label>
             </div>
 
-            <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Last price check: {new Date().toLocaleTimeString()} · {priceIndicator}</div>
+            <div className={`text-xs ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Last price check: synced with current product data · {priceIndicator}</div>
           </div>
         )}
 

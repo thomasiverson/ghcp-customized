@@ -31,6 +31,7 @@ export default function Products() {
   const [showWishlistModal, setShowWishlistModal] = useState(false);
   const [wishlistNote, setWishlistNote] = useState('');
   const [wishlistPriority, setWishlistPriority] = useState<WishlistPriority | ''>('');
+  const [feedbackMessage, setFeedbackMessage] = useState('');
 
   const { data: products, isLoading, error } = useQuery('products', fetchProducts);
   const { darkMode } = useTheme();
@@ -51,7 +52,7 @@ export default function Products() {
   const handleAddToCart = (productId: number) => {
     const quantity = quantities[productId] || 0;
     if (quantity > 0) {
-      alert(`Added ${quantity} items to cart`);
+      setFeedbackMessage(`Cart integration pending: would add ${quantity} item(s) to cart.`);
       setQuantities(prev => ({
         ...prev,
         [productId]: 0,
@@ -73,6 +74,7 @@ export default function Products() {
 
   const handleQuickAddToWishlist = (productId: number) => {
     addToWishlist(productId, { quantity: 1 });
+    setFeedbackMessage('Item added to wishlist with default settings');
   };
 
   const handleSaveWishlistItem = () => {
@@ -85,6 +87,7 @@ export default function Products() {
       priority: wishlistPriority || undefined,
       quantity: 1,
     });
+    setFeedbackMessage('Wishlist item saved with details');
 
     setShowWishlistModal(false);
     setWishlistProduct(null);
@@ -118,6 +121,11 @@ export default function Products() {
     <div className={`min-h-screen ${darkMode ? 'bg-dark' : 'bg-gray-100'} pt-20 pb-16 px-4 transition-colors duration-300`}>
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col space-y-6">
+          {feedbackMessage && (
+            <div className={`px-4 py-2 rounded-lg text-sm ${darkMode ? 'bg-gray-800 text-light' : 'bg-white text-gray-700'}`}>
+              {feedbackMessage}
+            </div>
+          )}
           <h1 className={`text-3xl font-bold ${darkMode ? 'text-light' : 'text-gray-800'} transition-colors duration-300`}>Products</h1>
 
           <div className="relative">
