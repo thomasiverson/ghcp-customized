@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import axios from 'axios';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/config';
 import PriceAlertBadge from './PriceAlertBadge';
 import PriceHistoryChart from './PriceHistoryChart';
@@ -9,6 +10,8 @@ import { calculateDiscountPercent, calculateVolatility, formatCurrency, getTrend
 import { PriceAlert, WishlistItem, WishlistSummary } from './types';
 
 const USER_ID = 1;
+const POLLING_INTERVAL_ONE_HOUR_MS = 60 * 60 * 1000;
+const DEFAULT_TARGET_PRICE_MULTIPLIER = 0.9;
 
 type SortMode = 'BEST_DEALS' | 'PRICE_DROPPED' | 'NEAR_TARGET';
 
@@ -28,15 +31,16 @@ const fetchSummary = async (): Promise<WishlistSummary> => {
 };
 
 export default function Wishlist() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [sortMode, setSortMode] = useState<SortMode>('BEST_DEALS');
+  const notifiedAlertIds = useRef<Set<number>>(new Set());
 
   const { data: items = [], isLoading } = useQuery('wishlist-items', fetchWishlist, {
-    staleTime: 30_000,
-    refetchInterval: 60_000
+    staleTime: 30_000
   });
-  const { data: alerts = [] } = useQuery('wishlist-alerts-page', fetchAlerts, { refetchInterval: 60_000 });
-  const { data: summary } = useQuery('wishlist-summary', fetchSummary, { refetchInterval: 60_000 });
+  const { data: alerts = [] } = useQuery('wishlist-alerts-page', fetchAlerts);
+  const { data: summary } = useQuery('wishlist-summary', fetchSummary);
 
   const setAlertMutation = useMutation({
     mutationFn: async ({ productId, targetPrice }: { productId: number; targetPrice: number }) => {
@@ -58,10 +62,11 @@ export default function Wishlist() {
       return;
     }
 
-    const target = alerts[0];
+    const target = alerts.find((entry) => !notifiedAlertIds.current.has(entry.alertId));
     if (!target) {
       return;
     }
+    notifiedAlertIds.current.add(target.alertId);
 
     const notification = new Notification(target.message, {
       body: `Product #${target.productId} has a new price event.`,
@@ -69,9 +74,9 @@ export default function Wishlist() {
     });
 
     notification.onclick = () => {
-      window.open('/products', '_blank');
+      navigate(`/products?productId=${encodeURIComponent(String(target.productId))}`);
     };
-  }, [alerts]);
+  }, [alerts, navigate]);
 
   useEffect(() => {
     if (!window.Worker) {
@@ -82,7 +87,17 @@ export default function Wishlist() {
       let timer = null;
       self.onmessage = function (event) {
         if (event.data === 'start') {
-          timer = setInterval(function () { self.postMessage('poll'); }, 60 * 60 * 1000);
+          const run = function () {
+            timer = setTimeout(function () {
+              self.postMessage('poll');
+              run();
+            }, ${POLLING_INTERVAL_ONE_HOUR_MS});
+          };
+          run();
+        }
+        if (event.data === 'stop' && timer) {
+          clearTimeout(timer);
+          timer = null;
         }
       };
     `;
@@ -97,6 +112,7 @@ export default function Wishlist() {
     worker.postMessage('start');
 
     return () => {
+      worker.postMessage('stop');
       worker.terminate();
     };
   }, [queryClient]);
@@ -172,7 +188,7 @@ export default function Wishlist() {
                   type="button"
                   className="rounded bg-primary px-3 py-1 text-xs font-semibold text-white"
                   onClick={() => {
-                    const suggested = Number((item.currentPrice * 0.9).toFixed(2));
+                    const suggested = Number((item.currentPrice * DEFAULT_TARGET_PRICE_MULTIPLIER).toFixed(2));
                     setAlertMutation.mutate({ productId: item.productId, targetPrice: suggested });
                   }}
                 >

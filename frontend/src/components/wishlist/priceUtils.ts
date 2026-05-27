@@ -54,8 +54,8 @@ export const sortWishlistItems = (items: WishlistItem[], mode: 'BEST_DEALS' | 'P
   }
 
   return sorted.sort((a, b) => {
-    const aDistance = Math.abs((a.targetPrice ?? a.currentPrice) - a.currentPrice);
-    const bDistance = Math.abs((b.targetPrice ?? b.currentPrice) - b.currentPrice);
+    const aDistance = a.targetPrice === undefined ? Number.POSITIVE_INFINITY : Math.abs(a.targetPrice - a.currentPrice);
+    const bDistance = b.targetPrice === undefined ? Number.POSITIVE_INFINITY : Math.abs(b.targetPrice - b.currentPrice);
     return aDistance - bDistance;
   });
 };

@@ -30,10 +30,12 @@ export default function PriceHistoryChart({ priceHistory }: PriceHistoryChartPro
   return (
     <div className="rounded-lg border border-gray-200 p-3">
       <svg width="100%" viewBox={`0 0 ${CHART_WIDTH} ${CHART_HEIGHT}`} role="img" aria-label="Price history chart">
+        <title>Wishlist price trend</title>
+        <desc>{`Added at ${formatCurrency(priceHistory[0].price)}, lowest observed ${formatCurrency(min)}, current ${formatCurrency(priceHistory[priceHistory.length - 1].price)}.`}</desc>
         <path d={pathData} fill="none" stroke="#76b852" strokeWidth="2" />
         {points.map((point, index) => (
           <circle
-            key={`${point.price}-${index}`}
+            key={index}
             cx={point.x}
             cy={point.y}
             r={index === points.length - 1 ? 4 : 3}

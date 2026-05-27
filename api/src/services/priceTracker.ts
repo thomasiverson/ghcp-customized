@@ -1,9 +1,13 @@
 import { products as seedProducts } from '../seedData';
 import { PriceAlert, PriceAlertType, PricePoint, WishlistItem } from '../models/wishlist';
 
-const HOUR_MS = 60 * 60 * 1000;
+const MILLISECONDS_PER_HOUR = 60 * 60 * 1000;
+// Throttle checks so repeated requests within the same minute do not trigger extra recalculations.
 const MIN_CHECK_INTERVAL_MS = 60 * 1000;
 const MAX_HISTORY_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+const PRICE_WAVE_PERIOD = 7;
+const PRICE_WAVE_OFFSET = 3;
+const PRICE_WAVE_FACTOR = 0.02;
 
 let lastGlobalCheck = 0;
 let pollingTimer: NodeJS.Timeout | undefined;
@@ -32,8 +36,8 @@ const calculateSimulatedPrice = (item: WishlistItem, now: Date): number => {
     return item.currentPrice;
   }
 
-  const wave = ((now.getUTCHours() + item.productId) % 7) - 3;
-  const factor = 1 + wave * 0.02;
+  const wave = ((now.getUTCHours() + item.productId) % PRICE_WAVE_PERIOD) - PRICE_WAVE_OFFSET;
+  const factor = 1 + wave * PRICE_WAVE_FACTOR;
   const nextPrice = Number((base * factor).toFixed(2));
   return nextPrice > 0 ? nextPrice : base;
 };
@@ -123,6 +127,7 @@ export const checkPriceUpdates = (
   let runningAlertId = nextAlertId;
 
   userItems.forEach((item) => {
+    const priorLowest = item.lowestPrice;
     const nextPrice = calculateSimulatedPrice(item, now);
     const change = recordPriceChange(item, nextPrice, now);
     if (!change || !item.priceAlerts) {
@@ -155,7 +160,7 @@ export const checkPriceUpdates = (
       );
     }
 
-    if ((item.lowestPrice ?? change.newPrice) === change.newPrice) {
+    if (priorLowest !== undefined && change.newPrice < priorLowest) {
       newAlerts.push(
         createAlert(
           runningAlertId++,
@@ -181,10 +186,10 @@ export const startPricePolling = (runCheck: () => void): void => {
 
   const run = () => {
     runCheck();
-    pollingTimer = setTimeout(run, HOUR_MS);
+    pollingTimer = setTimeout(run, MILLISECONDS_PER_HOUR);
   };
 
-  pollingTimer = setTimeout(run, HOUR_MS);
+  pollingTimer = setTimeout(run, MILLISECONDS_PER_HOUR);
 };
 
 export const stopPricePolling = (): void => {

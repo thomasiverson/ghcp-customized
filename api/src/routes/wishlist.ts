@@ -167,10 +167,8 @@ router.get('/:userId/summary', (req, res) => {
   const savedByWaiting = state.items.reduce((sum, item) => sum + Math.max(item.priceWhenAdded - item.currentPrice, 0), 0);
   const averageDiscount = state.items.length
     ? state.items.reduce((sum, item) => {
-      if (!item.priceWhenAdded) {
-        return sum;
-      }
-      return sum + ((item.priceWhenAdded - item.currentPrice) / item.priceWhenAdded) * 100;
+      const discountPercent = item.priceWhenAdded > 0 ? ((item.priceWhenAdded - item.currentPrice) / item.priceWhenAdded) * 100 : 0;
+      return sum + Math.max(0, discountPercent);
     }, 0) / state.items.length
     : 0;
 
