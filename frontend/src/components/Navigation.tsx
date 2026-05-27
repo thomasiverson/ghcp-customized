@@ -2,11 +2,34 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from 'react-query';
+import axios from 'axios';
+import { api } from '../api/config';
+import { PriceAlert } from './wishlist/types';
+
+const USER_ID = 1;
+
+const fetchAlerts = async (): Promise<PriceAlert[]> => {
+  const { data } = await axios.get(`${api.baseURL}${api.endpoints.wishlists}/${USER_ID}/alerts`);
+  return data;
+};
 
 export default function Navigation() {
   const { isLoggedIn, isAdmin, logout } = useAuth();
   const { darkMode, toggleTheme } = useTheme();
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const [showAlertsPanel, setShowAlertsPanel] = useState(false);
+  const queryClient = useQueryClient();
+  const { data: alerts = [] } = useQuery('nav-wishlist-alerts', fetchAlerts, { refetchInterval: 60_000 });
+
+  const dismissMutation = useMutation({
+    mutationFn: async (alertId: number) => {
+      await axios.post(`${api.baseURL}${api.endpoints.wishlists}/${USER_ID}/alerts/${alertId}/dismiss`);
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries('nav-wishlist-alerts');
+    }
+  });
 
   return (
     <nav className={`${darkMode ? 'bg-dark/95' : 'bg-white/95'} backdrop-blur-sm fixed w-full z-50 shadow-md transition-colors duration-300`}>
@@ -29,6 +52,7 @@ export default function Navigation() {
             <div className="ml-10 flex items-baseline space-x-4">
               <Link to="/" className={`${darkMode ? 'text-light hover:text-primary' : 'text-gray-700 hover:text-primary'} px-3 py-2 rounded-md text-sm font-medium transition-colors`}>Home</Link>
               <Link to="/products" className={`${darkMode ? 'text-light hover:text-primary' : 'text-gray-700 hover:text-primary'} px-3 py-2 rounded-md text-sm font-medium transition-colors`}>Products</Link>
+              <Link to="/wishlist" className={`${darkMode ? 'text-light hover:text-primary' : 'text-gray-700 hover:text-primary'} px-3 py-2 rounded-md text-sm font-medium transition-colors`}>Wishlist</Link>
               <Link to="/about" className={`${darkMode ? 'text-light hover:text-primary' : 'text-gray-700 hover:text-primary'} px-3 py-2 rounded-md text-sm font-medium transition-colors`}>About us</Link>
               {isAdmin && (
                 <div className="relative">
@@ -68,6 +92,49 @@ export default function Navigation() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setShowAlertsPanel((value) => !value)}
+                className={`relative p-2 rounded-full ${darkMode ? 'text-light hover:text-primary' : 'text-gray-700 hover:text-primary'} transition-colors`}
+                aria-label="Toggle price alerts"
+              >
+                🔔
+                {alerts.length > 0 && (
+                  <span className="absolute -top-1 -right-1 rounded-full bg-primary px-1.5 text-xs text-white">
+                    {alerts.length}
+                  </span>
+                )}
+              </button>
+              {showAlertsPanel && (
+                <div className={`absolute right-0 mt-2 w-80 rounded-md shadow-lg ${darkMode ? 'bg-dark' : 'bg-white'} ring-1 ring-black ring-opacity-5 p-3`}>
+                  <div className="mb-2 flex items-center justify-between">
+                    <h3 className={`${darkMode ? 'text-light' : 'text-gray-800'} text-sm font-semibold`}>Price notifications</h3>
+                    <Link to="/price-alerts" onClick={() => setShowAlertsPanel(false)} className="text-xs text-primary hover:underline">
+                      Manage
+                    </Link>
+                  </div>
+                  <div className="space-y-2 max-h-56 overflow-y-auto">
+                    {alerts.length === 0 && <p className="text-xs text-gray-500">No active alerts</p>}
+                    {alerts.map((alert) => (
+                      <div key={alert.alertId} className={`rounded border ${darkMode ? 'border-gray-700' : 'border-gray-200'} p-2`}>
+                        <p className={`${darkMode ? 'text-light' : 'text-gray-800'} text-xs`}>{alert.message}</p>
+                        <div className="mt-1 flex items-center justify-between">
+                          <span className="text-[10px] text-gray-500">{new Date(alert.createdAt).toLocaleTimeString()}</span>
+                          <button
+                            type="button"
+                            className="text-[10px] text-primary hover:underline"
+                            onClick={() => dismissMutation.mutate(alert.alertId)}
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full focus:outline-none transition-colors"

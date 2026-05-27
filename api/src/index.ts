@@ -10,6 +10,8 @@ import orderRoutes from './routes/order';
 import branchRoutes from './routes/branch';
 import headquartersRoutes from './routes/headquarters';
 import supplierRoutes from './routes/supplier';
+import wishlistRoutes, { runWishlistPriceCheck } from './routes/wishlist';
+import { startPricePolling } from './services/priceTracker';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -74,6 +76,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/headquarters', headquartersRoutes);
 app.use('/api/suppliers', supplierRoutes);
+app.use('/api/wishlists', wishlistRoutes);
 
 app.get('/', (req, res) => {
   res.send('Hello, world!');
@@ -83,3 +86,5 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
   console.log(`API documentation is available at http://localhost:${port}/api-docs`);
 });
+
+startPricePolling(runWishlistPriceCheck);
