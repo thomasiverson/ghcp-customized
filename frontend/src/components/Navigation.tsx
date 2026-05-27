@@ -12,6 +12,7 @@ export default function Navigation() {
   const [wishlistUserId, setWishlistUserId] = useState('demo-user');
   const [selectedWishlistId, setSelectedWishlistId] = useState<number | null>(null);
   const [quickItemName, setQuickItemName] = useState('');
+  const [quickListName, setQuickListName] = useState('');
 
   const loadWishlists = useCallback(async () => {
     const loaded = await wishlistApi.listByUser(wishlistUserId);
@@ -45,19 +46,19 @@ export default function Navigation() {
   };
 
   const createWishlistShortcut = async () => {
-    const name = window.prompt('Wishlist name');
-    if (!name) {
+    if (!quickListName) {
       return;
     }
 
     await wishlistApi.create({
       userId: wishlistUserId,
-      name,
+      name: quickListName,
       visibility: 'private',
       isGiftRegistry: false,
       collaborators: [],
       items: [],
     });
+    setQuickListName('');
     await loadWishlists();
   };
 
@@ -149,6 +150,13 @@ export default function Navigation() {
                 aria-label="Quick add wishlist item"
               />
               <button className="text-xs px-2 py-1 rounded-md border border-primary text-primary" onClick={quickAddToWishlist} type="button">Add</button>
+              <input
+                className={`w-20 px-2 py-1 text-xs rounded-md border ${darkMode ? 'bg-gray-800 text-light border-gray-700' : 'bg-white text-gray-700 border-gray-300'}`}
+                placeholder="New list"
+                value={quickListName}
+                onChange={(event) => setQuickListName(event.target.value)}
+                aria-label="Create wishlist shortcut"
+              />
               <button className="text-xs px-2 py-1 rounded-md border border-primary text-primary" onClick={createWishlistShortcut} type="button">New</button>
             </div>
             <button

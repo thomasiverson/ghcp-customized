@@ -12,6 +12,13 @@ const publicViewRateLimit = new Map<string, number[]>();
 
 const isValidUuid = (value: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 const isExpired = (date?: string) => (date ? new Date(date).getTime() < Date.now() : false);
+const escapeXml = (value: string) =>
+  value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
 
 const cleanupExpiredReservations = () => {
   wishlists = wishlists.map((wishlist) => ({
@@ -27,6 +34,16 @@ const cleanupExpiredReservations = () => {
       return item;
     }),
   }));
+
+  const cutoff = Date.now() - 60_000;
+  for (const [key, timestamps] of publicViewRateLimit.entries()) {
+    const recent = timestamps.filter((timestamp) => timestamp >= cutoff);
+    if (recent.length === 0) {
+      publicViewRateLimit.delete(key);
+    } else {
+      publicViewRateLimit.set(key, recent);
+    }
+  }
 };
 
 const cleanupTimer = setInterval(cleanupExpiredReservations, 5 * 60 * 1000);
@@ -335,10 +352,12 @@ router.get('/shared/:token/og-image', (req, res) => {
 
   const itemPreview = wishlist.items
     .slice(0, 3)
-    .map((item, index) => `<text x="40" y="${140 + index * 38}" font-size="24" fill="#1f2937">• ${item.name}</text>`)
+    .map((item, index) => `<text x="40" y="${140 + index * 38}" font-size="24" fill="#1f2937">• ${escapeXml(item.name)}</text>`)
     .join('');
 
-  const svg = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"630\" viewBox=\"0 0 1200 630\">\n  <defs>\n    <linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">\n      <stop offset=\"0%\" stop-color=\"#ecfdf5\" />\n      <stop offset=\"100%\" stop-color=\"#d1fae5\" />\n    </linearGradient>\n  </defs>\n  <rect width=\"1200\" height=\"630\" fill=\"url(#g)\" />\n  <text x=\"40\" y=\"80\" font-size=\"50\" font-weight=\"700\" fill=\"#065f46\">${wishlist.name}</text>\n  <text x=\"40\" y=\"112\" font-size=\"24\" fill=\"#047857\">${wishlist.description ?? 'Shared wishlist preview'}</text>\n  ${itemPreview}\n  <text x=\"40\" y=\"580\" font-size=\"22\" fill=\"#064e3b\">OctoCAT Supply Wishlists</text>\n</svg>`;
+  const safeWishlistName = escapeXml(wishlist.name);
+  const safeWishlistDescription = escapeXml(wishlist.description ?? 'Shared wishlist preview');
+  const svg = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"1200\" height=\"630\" viewBox=\"0 0 1200 630\">\n  <defs>\n    <linearGradient id=\"g\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"1\">\n      <stop offset=\"0%\" stop-color=\"#ecfdf5\" />\n      <stop offset=\"100%\" stop-color=\"#d1fae5\" />\n    </linearGradient>\n  </defs>\n  <rect width=\"1200\" height=\"630\" fill=\"url(#g)\" />\n  <text x=\"40\" y=\"80\" font-size=\"50\" font-weight=\"700\" fill=\"#065f46\">${safeWishlistName}</text>\n  <text x=\"40\" y=\"112\" font-size=\"24\" fill=\"#047857\">${safeWishlistDescription}</text>\n  ${itemPreview}\n  <text x=\"40\" y=\"580\" font-size=\"22\" fill=\"#064e3b\">OctoCAT Supply Wishlists</text>\n</svg>`;
 
   res.setHeader('Content-Type', 'image/svg+xml');
   res.send(svg);
@@ -668,23 +687,21 @@ router.get('/:id/registry-stats', (req, res) => {
   const totalItems = wishlist.items.length;
   const purchasedItems = wishlist.items.filter((item) => item.isPurchased).length;
   const reservedItems = wishlist.items.filter((item) => item.reservedBy && !isExpired(item.reservedUntil)).length;
-  const viewCount = shares
-    .filter((share) => share.wishlistId === wishlistId)
-    .reduce((sum, share) => sum + share.views, 0);
+  const wishlistShares = shares.filter((share) => share.wishlistId === wishlistId);
+  const viewCount = wishlistShares.reduce((sum, share) => sum + share.views, 0);
 
-  const shareUsage = shares
-    .filter((share) => share.wishlistId === wishlistId)
-    .reduce<Record<WishlistShare['shareMethod'], number>>(
+  const shareUsage = wishlistShares.reduce<Record<WishlistShare['shareMethod'], number>>(
       (accumulator, share) => {
         accumulator[share.shareMethod] += 1;
         return accumulator;
       },
       { link: 0, email: 0, social: 0 },
-    );
+  );
 
   const productShareCounts: Record<number, number> = {};
   wishlist.items.forEach((item) => {
-    productShareCounts[item.productId] = (productShareCounts[item.productId] ?? 0) + shares.filter((share) => share.wishlistId === wishlistId).length;
+    const weightedCount = (item.isPurchased ? 1 : 0) + shareUsage.social + shareUsage.email + shareUsage.link;
+    productShareCounts[item.productId] = (productShareCounts[item.productId] ?? 0) + weightedCount;
   });
 
   const mostSharedProducts = Object.entries(productShareCounts)

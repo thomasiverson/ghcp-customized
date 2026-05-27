@@ -17,6 +17,8 @@ export default function PublicWishlistView() {
   const [wishlist, setWishlist] = useState<Wishlist | null>(null);
   const [visitorCount, setVisitorCount] = useState(0);
   const [error, setError] = useState('');
+  const [copyUserId, setCopyUserId] = useState('demo-user');
+  const [toast, setToast] = useState('');
 
   const shareUrl = useMemo(() => window.location.href, []);
 
@@ -70,7 +72,7 @@ export default function PublicWishlistView() {
     }
 
     await wishlistApi.create({
-      userId: 'demo-user',
+      userId: copyUserId,
       name: `Copy of ${wishlist.name}`,
       description: `Copied from shared list ${wishlist.name}`,
       visibility: 'private',
@@ -84,7 +86,8 @@ export default function PublicWishlistView() {
       })),
     });
 
-    alert('Copied to your wishlists');
+    setToast('Copied to your wishlists');
+    setTimeout(() => setToast(''), 2500);
   };
 
   if (error) {
@@ -108,7 +111,9 @@ export default function PublicWishlistView() {
           <article key={item.itemId} className="bg-white border rounded-lg p-4 flex items-center justify-between gap-4">
             <div>
               <p className="font-medium text-gray-800">{item.name}</p>
-              <p className="text-sm text-gray-600">{item.price > 0 ? `$${item.price.toFixed(2)}` : 'Price hidden by owner'}</p>
+              <p className="text-sm text-gray-600">
+                {wishlist.hidePricesInPublic ? 'Price hidden by owner' : `$${item.price.toFixed(2)}`}
+              </p>
             </div>
             <a
               href={item.url || `https://www.google.com/search?q=${encodeURIComponent(item.name)}`}
@@ -122,7 +127,11 @@ export default function PublicWishlistView() {
         ))}
       </div>
 
-      <button className="px-4 py-2 rounded-md border" onClick={copyToOwnWishlist} type="button">Copy to my wishlist</button>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <input className="border rounded-md px-3 py-2" value={copyUserId} onChange={(event) => setCopyUserId(event.target.value)} placeholder="Your user id" />
+        <button className="px-4 py-2 rounded-md border" onClick={copyToOwnWishlist} type="button">Copy to my wishlist</button>
+      </div>
+      {toast && <p className="text-sm text-green-600">{toast}</p>}
     </div>
   );
 }

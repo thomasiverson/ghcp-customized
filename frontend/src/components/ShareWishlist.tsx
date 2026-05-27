@@ -56,9 +56,10 @@ export default function ShareWishlist({ wishlist, userId }: ShareWishlistProps) 
   };
 
   const openEmailShare = () => {
+    const safeRecipient = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(recipient.trim()) ? recipient.trim() : '';
     const subject = encodeURIComponent(`Wishlist: ${wishlist.name}`);
     const body = encodeURIComponent(`Take a look at this wishlist: ${activeShareLink}`);
-    window.location.href = `mailto:${recipient}?subject=${subject}&body=${body}`;
+    window.location.assign(`mailto:${encodeURIComponent(safeRecipient)}?subject=${subject}&body=${body}`);
   };
 
   const loadAnalytics = async () => {
