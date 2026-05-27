@@ -10,6 +10,7 @@ import orderRoutes from './routes/order';
 import branchRoutes from './routes/branch';
 import headquartersRoutes from './routes/headquarters';
 import supplierRoutes from './routes/supplier';
+import wishlistRoutes from './routes/wishlist';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -29,7 +30,7 @@ console.log('Configured CORS origins:', corsOrigins);
 // Enable CORS for the frontend
 app.use(cors({
   origin: corsOrigins,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true // Allow credentials
 }));
@@ -74,6 +75,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/branches', branchRoutes);
 app.use('/api/headquarters', headquartersRoutes);
 app.use('/api/suppliers', supplierRoutes);
+app.use('/api/wishlists', wishlistRoutes);
 
 app.get('/', (req, res) => {
   res.send('Hello, world!');

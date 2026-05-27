@@ -1,12 +1,65 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { wishlistApi, Wishlist } from '../api/wishlists';
 
 export default function Navigation() {
   const { isLoggedIn, isAdmin, logout } = useAuth();
   const { darkMode, toggleTheme } = useTheme();
   const [adminMenuOpen, setAdminMenuOpen] = useState(false);
+  const [wishlists, setWishlists] = useState<Wishlist[]>([]);
+  const [wishlistUserId, setWishlistUserId] = useState('demo-user');
+  const [selectedWishlistId, setSelectedWishlistId] = useState<number | null>(null);
+  const [quickItemName, setQuickItemName] = useState('');
+
+  const loadWishlists = useCallback(async () => {
+    const loaded = await wishlistApi.listByUser(wishlistUserId);
+    setWishlists(loaded);
+    if (!selectedWishlistId && loaded.length > 0) {
+      setSelectedWishlistId(loaded[0].wishlistId);
+    }
+  }, [selectedWishlistId, wishlistUserId]);
+
+  useEffect(() => {
+    loadWishlists().catch(() => undefined);
+  }, [loadWishlists]);
+
+  const totalItems = useMemo(
+    () => wishlists.reduce((sum, wishlist) => sum + wishlist.items.length, 0),
+    [wishlists],
+  );
+
+  const quickAddToWishlist = async () => {
+    if (!selectedWishlistId || !quickItemName) {
+      return;
+    }
+
+    await wishlistApi.addItem(selectedWishlistId, {
+      userId: wishlistUserId,
+      name: quickItemName,
+      price: 0,
+    });
+    setQuickItemName('');
+    await loadWishlists();
+  };
+
+  const createWishlistShortcut = async () => {
+    const name = window.prompt('Wishlist name');
+    if (!name) {
+      return;
+    }
+
+    await wishlistApi.create({
+      userId: wishlistUserId,
+      name,
+      visibility: 'private',
+      isGiftRegistry: false,
+      collaborators: [],
+      items: [],
+    });
+    await loadWishlists();
+  };
 
   return (
     <nav className={`${darkMode ? 'bg-dark/95' : 'bg-white/95'} backdrop-blur-sm fixed w-full z-50 shadow-md transition-colors duration-300`}>
@@ -29,6 +82,7 @@ export default function Navigation() {
             <div className="ml-10 flex items-baseline space-x-4">
               <Link to="/" className={`${darkMode ? 'text-light hover:text-primary' : 'text-gray-700 hover:text-primary'} px-3 py-2 rounded-md text-sm font-medium transition-colors`}>Home</Link>
               <Link to="/products" className={`${darkMode ? 'text-light hover:text-primary' : 'text-gray-700 hover:text-primary'} px-3 py-2 rounded-md text-sm font-medium transition-colors`}>Products</Link>
+              <Link to="/wishlists" className={`${darkMode ? 'text-light hover:text-primary' : 'text-gray-700 hover:text-primary'} px-3 py-2 rounded-md text-sm font-medium transition-colors`}>Wishlists</Link>
               <Link to="/about" className={`${darkMode ? 'text-light hover:text-primary' : 'text-gray-700 hover:text-primary'} px-3 py-2 rounded-md text-sm font-medium transition-colors`}>About us</Link>
               {isAdmin && (
                 <div className="relative">
@@ -68,6 +122,35 @@ export default function Navigation() {
             </div>
           </div>
           <div className="flex items-center space-x-4">
+            <div className="hidden lg:flex items-center space-x-2">
+              <input
+                className={`w-24 px-2 py-1 text-xs rounded-md border ${darkMode ? 'bg-gray-800 text-light border-gray-700' : 'bg-white text-gray-700 border-gray-300'}`}
+                value={wishlistUserId}
+                onChange={(event) => setWishlistUserId(event.target.value)}
+                aria-label="Wishlist user id"
+              />
+              <select
+                className={`max-w-32 px-2 py-1 text-xs rounded-md border ${darkMode ? 'bg-gray-800 text-light border-gray-700' : 'bg-white text-gray-700 border-gray-300'}`}
+                value={selectedWishlistId ?? ''}
+                onChange={(event) => setSelectedWishlistId(Number(event.target.value))}
+                aria-label="Select wishlist"
+              >
+                <option value="">List</option>
+                {wishlists.map((wishlist) => (
+                  <option key={wishlist.wishlistId} value={wishlist.wishlistId}>{wishlist.name}</option>
+                ))}
+              </select>
+              <span className="text-xs bg-primary text-white px-2 py-1 rounded-full">{totalItems}</span>
+              <input
+                className={`w-24 px-2 py-1 text-xs rounded-md border ${darkMode ? 'bg-gray-800 text-light border-gray-700' : 'bg-white text-gray-700 border-gray-300'}`}
+                placeholder="Quick add"
+                value={quickItemName}
+                onChange={(event) => setQuickItemName(event.target.value)}
+                aria-label="Quick add wishlist item"
+              />
+              <button className="text-xs px-2 py-1 rounded-md border border-primary text-primary" onClick={quickAddToWishlist} type="button">Add</button>
+              <button className="text-xs px-2 py-1 rounded-md border border-primary text-primary" onClick={createWishlistShortcut} type="button">New</button>
+            </div>
             <button
               onClick={toggleTheme}
               className="p-2 rounded-full focus:outline-none transition-colors"

@@ -96,6 +96,13 @@ erDiagram
 - **Backend**: Express.js, TypeScript, OpenAPI/Swagger
 - **DevOps**: Docker
 
+### Wishlist Social Features
+- Multiple named wishlists with visibility controls (`private`, `public`, `unlisted`)
+- Share links with UUID tokens, social/email sharing, QR code generation, and view analytics
+- Gift registry workflows (reserve, purchase, unreserve) with CAPTCHA token checks and 24-hour reservations
+- Collaborative wishlists with collaborator management, comments, and activity feed polling
+- Public wishlist pages with Open Graph/Twitter/Pinterest meta tags and generated og:image previews
+
 ---
 
 ## 🚀 Getting Started
